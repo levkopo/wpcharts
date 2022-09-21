@@ -1,0 +1,29 @@
+.Layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+}
+
+.Layout-Top {
+
+}
+
+.Layout-Vertical {
+    flex: 1;
+    height: inherit;
+
+    display: flex;
+    flex-direction: row;
+}
+
+.Layout-Main {
+    flex: 1;
+}
+
+.Layout-Right {
+}
+
+.Layout-Left {
+}

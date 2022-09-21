@@ -1,0 +1,36 @@
+.WindowHeader {
+    width: 100%;
+    height: 35px;
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    background: var(--navigationColor);
+    color: var(--colorOnBackground);
+    -webkit-app-region: drag;
+}
+
+.WindowHeader-Title {
+    font-weight: 500;
+    font-size: 16px;
+    margin-left: 18px;
+}
+
+.WindowHeader-Buttons {
+    margin-left: auto;
+    height: 100%;
+}
+
+.WindowHeader-Button {
+    display: flex;
+    width: 85px;
+    height: inherit;
+    align-items: center;
+    justify-content: center;
+    -webkit-app-region: none;
+}
+
+.WindowHeader-Button:hover {
+    background: var(--rippleColor);
+}

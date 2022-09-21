@@ -1,0 +1,7 @@
+.NavigationLayout {
+    background: var(--navigationColor);
+    padding: 10px;
+    border-radius: 0;
+    margin: 0;
+    height: 100%;
+}
