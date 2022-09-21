@@ -4,7 +4,6 @@ import reportWebVitals from './reportWebVitals';
 import '@zationdev/ui/dist/index.css'
 import './index.css';
 import App from './App';
-require('@electron/remote/main').initialize()
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
