@@ -1,0 +1,31 @@
+.ContextRightMenu {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    box-shadow: 1px 1px 3px 0 #767676;
+}
+
+.ContextRightMenu-Item {
+    width: 170px;
+    padding: 5px 5px 5px 10px;
+    cursor: pointer;
+
+    display: flex;
+    align-content: center;
+    align-items: center;
+}
+
+.ContextRightMenu-Item-Icon {
+    margin-right: 15px;
+    width: 18px;
+}
+
+.ContextRightMenu-Item-Icon > svg {
+    width: 18px;
+    height: 18px;
+}
+
+.ContextRightMenu-Item:hover {
+    border-radius: var(--zui-containers-round);
+    background: var(--colorPrimaryContainer);
+    color: var(--colorOnPrimaryContainer);
+}

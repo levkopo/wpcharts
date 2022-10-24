@@ -1,0 +1,16 @@
+.ResizableLayout-Handle {
+    cursor: ew-resize;
+    width: 3px;
+    background: var(--grayColor);
+    opacity: 0.5;
+}
+
+.ResizableLayout {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
+.ResizableLayout-Content {
+    flex: 1;
+}

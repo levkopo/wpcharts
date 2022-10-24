@@ -3,7 +3,6 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
-    position: absolute;
 }
 
 .Layout-Top {
@@ -11,6 +10,7 @@
 }
 
 .Layout-Vertical {
+    overflow: hidden;
     flex: 1;
     height: inherit;
 

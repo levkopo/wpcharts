@@ -1,20 +1,21 @@
 import React from "react";
 import "./WindowHeader.css";
 import {useTitle} from "../../App";
-import {AddIcon, LogoutIcon} from "@zationdev/ui";
-const { app } = require("@electron/remote")
+import {LogoutIcon} from "@zationdev/ui";
+import {getCurrentWindow} from "@electron/remote";
 
-
-export default function WindowHeader() {
-    const [title] = useTitle() ?? []
+export default function WindowHeader(params: {
+    onClose?: () => void
+}) {
+    const [title] = useTitle()
 
     return <div className="WindowHeader">
         <div className="WindowHeader-Title">
-            {"KPresentations - " + title}
+            {"WPCharts - " + title}
         </div>
 
         <div className="WindowHeader-Buttons">
-            <div className="WindowHeader-Button" onClick={() => app.quit()}>
+            <div className="WindowHeader-Button" onClick={() => params.onClose ? params.onClose() : getCurrentWindow().close()}>
                 <LogoutIcon/>
             </div>
         </div>

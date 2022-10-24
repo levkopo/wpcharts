@@ -1,0 +1,35 @@
+.MenuBar {
+    background: var(--navigationColor);
+    color: var(--colorOnBackground);
+    height: 30px;
+    padding-left: 15px;
+    padding-right: 15px;
+
+    display: flex;
+    flex-direction: row;
+}
+
+.MenuBar-Item {
+    display: flex;
+    height: inherit;
+    align-items: center;
+    justify-content: center;
+    -webkit-app-region: none;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: var(--zui-containers-round);
+}
+
+.MenuBar-Item:hover {
+    background: var(--rippleColor);
+}
+
+.MenuBar-secondary {
+    height: 24px;
+}
+
+.MenuBar-secondary > .MenuBar-Item {
+    font-size: 13px;
+    font-weight: 450;
+    text-transform: uppercase;
+}

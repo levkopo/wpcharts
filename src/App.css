@@ -1,14 +1,28 @@
 :root {
-  --colorPrimary: #a62a2a;
-  --colorPrimaryContainer: #f15555;
-  --colorBackground: #fff2f2;
-  --colorOnBackground: #2f1c1c;
-  --navigationColor: #ffdfdf;
-  --colorSurface: #e3c3c3;
+  --colorPrimary: #7d2aa6;
+  --colorPrimaryContainer: #8e55f1;
+  --colorOnPrimaryContainer: #FFF;
+  --colorBackground: #f6f2ff;
+  --colorOnBackground: #211c2f;
+  --navigationColor: #e8dfff;
+  --colorSurface: #d2c3e3;
+}
+
+:root[theme=dark] {
+  --colorPrimary: #7d2aa6;
+  --colorOnPrimary: #f6eeff;
+  --colorPrimaryContainer: #8e55f1;
+  --colorOnPrimaryContainer: #f6eeff;
+  --colorBackground: #100d1e;
+  --colorOnBackground: #e2d6fd;
+  --navigationColor: #151026;
+  --colorSurface: #21122c;
+  --colorOnSurface: #f6eeff;
 }
 
 html {
   overflow: hidden;
+  background: var(--colorBackground);
 }
 
 ::-webkit-scrollbar-thumb {

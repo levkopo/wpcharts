@@ -1,61 +1,93 @@
-import React, {createContext, Dispatch, SetStateAction, useContext, useMemo, useState} from 'react';
+import React, {createContext, useContext, useEffect, useMemo, useState} from 'react';
 import './App.css';
-import {AddIcon, AppRoot, Card, Cell, FloatingActionButton, Header, Hosts, Toolbar} from "@zationdev/ui";
-import WindowHeader from "./components/WindowHeader/WindowHeader";
-import {Layout} from "./components/Layout/Layout";
-import {List} from "./components/List/List";
-import NavigationLayout from "./components/NavigationLayout/NavigationLayout";
+import {AppRoot, Dialog, Div} from "@zationdev/ui";
+import {Route, Router} from "wouter";
+import {Path} from "wouter/types/use-location";
+import HomeWindow from "./windows/HomeWindow/HomeWindow";
+import ChartsWindow from "./windows/ChartsWindow/ChartsWindow";
+import {BrowserWindow, getCurrentWindow, require as remote_require, screen} from "@electron/remote";
+import {BrowserWindowConstructorOptions} from "electron";
+import {unpack} from "msgpackr";
+import ChartsData from "./core/models/ChartsData";
 
-const titleContext = createContext<[string, (title: string) => void]|undefined>(undefined);
+const titleContext = createContext<[string, (title: string) => void]>(['', () => undefined]);
 export function useTitle() {
     return useContext(titleContext);
 }
 
+const currentLocation = () => {
+    return window.location.hash.replace(/^#/, "") || "/";
+};
+
+export const openChartFromFile = (path: string) => {
+    const data = remote_require("fs").readFileSync(path)
+    const unpackedData = unpack(data) as ChartsData
+    navigate(ChartsWindow.PAGE_NAME, ChartsWindow.WINDOW_SETTINGS, unpackedData)
+}
+
+export const navigate = (to: string, settings: BrowserWindowConstructorOptions & {
+    closeWindow?: boolean
+} = {}, data: any = undefined) => {
+    const primaryDisplay = screen.getPrimaryDisplay()
+    const factor = primaryDisplay.scaleFactor
+
+    const newWindow = new BrowserWindow({
+        width: factor * (settings.width||1200),
+        height: factor * (settings.height||1200),
+        minWidth: factor * (settings.minWidth||1200),
+        minHeight: factor * (settings.minHeight||1200),
+
+        ...settings,
+        frame: false,
+        icon: __dirname + '/resources/android-chrome-512x512.png',
+        // parent: getCurrentWindow(),
+        webPreferences: {
+            nodeIntegration: true,
+            nodeIntegrationInSubFrames: true,
+            contextIsolation: false
+        },
+    });
+
+    newWindow.setBackgroundColor("#f6f2ff")
+    remote_require("@electron/remote/main").enable(newWindow.webContents)
+    newWindow.loadURL(window.location.href
+        .substring(0, window.location.href.indexOf('#')) + "#" + to).then(it => {
+        newWindow.webContents.send("data", data)
+
+        if(settings.hasOwnProperty('closeWindow')){
+            getCurrentWindow().close()
+        }
+    });
+};
+
+const useHashLocation: (
+    ...args: any[]
+) => [Path, (path: Path, ...args: any[]) => any] = () => {
+    const [loc, setLoc] = useState(currentLocation());
+
+    useEffect(() => {
+        // this function is called whenever the hash changes
+        const handler = () => setLoc(currentLocation());
+
+        // subscribe to hash changes
+        window.addEventListener("hashchange", handler);
+        return () => window.removeEventListener("hashchange", handler);
+    }, []);
+
+    return [loc, navigate];
+}
+
 function App() {
     const [title, setTitle] = useState("Главная")
-    if(title!=="Главная") setTitle("Главная")
-
-    useMemo(() => window.document.title = "KPresentations - " + title, [title])
+    useMemo(() => window.document.title = "WPCharts - " + title, [title])
 
     return (
         <titleContext.Provider value={[title, setTitle]}>
             <AppRoot>
-                <Layout
-                    top={
-                        [
-                            <WindowHeader/>
-                        ]
-                    }
-
-                    left={
-                        [
-                            <NavigationLayout>
-                                <FloatingActionButton icon={
-                                    <AddIcon/>
-                                } size={"56px"}/>
-                            </NavigationLayout>
-                        ]
-                    }
-                    content={
-                        <>
-                            <Header
-                                before={<div style={{width: 5}}/>}
-                                title="Недавнее"
-                                mode="tertiary"
-                            />
-                            <List>
-                                {
-                                    "a".repeat(500).split("").map(it =>
-                                        <Cell
-                                            before={<div style={{width: 30}}/>}
-                                            description="Последнее изменение: 70 лет назад"
-                                        >{"MyPresentation.kppf"}</Cell>
-                                    )
-                                }
-                            </List>
-                        </>
-                    }
-                />
+                <Router hook={useHashLocation}>
+                    <Route path={HomeWindow.PAGE_NAME} component={HomeWindow}/>
+                    <Route path={ChartsWindow.PAGE_NAME} component={ChartsWindow}/>
+                </Router>
             </AppRoot>
         </titleContext.Provider>
     );

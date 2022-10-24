@@ -2,15 +2,20 @@ import React from "react";
 import "./Layout.css";
 
 interface LayoutProps {
-    left?: JSX.Element[]
-    bottom?: JSX.Element[]
-    right?: JSX.Element[]
-    top?: JSX.Element[]
-    content?: JSX.Element
+    left?: React.ReactNode
+    bottom?: React.ReactNode
+    right?: React.ReactNode
+    top?: React.ReactNode
+    content?: React.ReactNode,
+    nested?: boolean
 }
 
 export function Layout(props: LayoutProps) {
-    return <div className="Layout">
+    return <div className="Layout" style={{
+        ...(!props.nested)&&{
+            height: "100vh"
+        }
+    }}>
         <header className="Layout-Top">
             {props.top}
         </header>

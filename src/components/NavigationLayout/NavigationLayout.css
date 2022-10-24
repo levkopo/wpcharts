@@ -1,6 +1,6 @@
 .NavigationLayout {
     background: var(--navigationColor);
-    padding: 10px;
+    color: var(--grayColor);
     border-radius: 0;
     margin: 0;
     height: 100%;
