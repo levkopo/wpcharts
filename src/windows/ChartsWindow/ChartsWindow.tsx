@@ -210,9 +210,12 @@ export default function ChartsWindow() {
                         }),
                         MenuItem({
                             title: "Новый график",
-                            onClick: () => {
-                                createChart('line', 'Новый линейный график ('+(presentationData.charts.length+1)+')')
-                            }
+                            children: types.map(it => ({
+                                title: it.title,
+                                onClick: () => {
+                                    createChart(it.id, 'Новый график ('+(presentationData.charts.length+1)+')')
+                                },
+                            }))
                         }),
                         MenuItem({
                             title: "Экпорт в PNG",

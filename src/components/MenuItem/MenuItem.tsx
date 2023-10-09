@@ -1,6 +1,7 @@
 export interface MenuItemProps {
     title: string,
-    icon?: undefined|JSX.Element
+    icon?: undefined|JSX.Element,
+    children?: MenuItemProps[]
     onClick?: () => void
 }
 
