@@ -1,7 +1,6 @@
 import React, {ErrorInfo, useEffect, useRef, useState} from 'react'
 import Chart from "../../core/models/Chart";
 import {
-    AddIcon,
     Button,
     DeleteIcon,
     Dialog,
@@ -16,11 +15,13 @@ import {Chart as ChartJS, registerables} from "chart.js";
 import EditableHeader from "../EditableHeader/EditableHeader";
 import Points from "../../core/models/Points";
 import ResizableLayout from "../ResizableLayout/ResizableLayout";
-import {Layout} from "../Layout/Layout";
+import {PosLayout} from "../Layout/PosLayout";
 import IconAdd from "../../icons/IconAdd";
 import {saveFile} from "../../windows/ChartsWindow/ChartsWindow";
 import ChartsData from "../../core/models/ChartsData";
 import {getCurrentWindow} from "@electron/remote";
+import {HStack, Layout, ScrollLayout, useSnackbar, VStack} from "@znui/react";
+import Table from "../Table/Table";
 
 ChartJS.register(...registerables);
 
@@ -44,22 +45,40 @@ const PointsEditor = (data: {
     points: Points,
     needUpdate: () => void
 }) => {
+    const snackbar = useSnackbar()
 
-    return <div>
+    return <ScrollLayout flex={1}>
+        <Table
+            table={data.points.points.map(it=>[ it.x, it.y ])}
+            xHeaders={['X', 'Y']}
+            onChanged={(x, y, rawValue) => {
+                const value = parseFloat(rawValue)
+                if(isNaN(value)) {
+                    snackbar({
+                        text: 'Не удалось обработать значение. Ожидалось значение типа "число"'
+                    })
+                    return
+                }
 
-        <div style={{
-            height: '73' +
-                'vh',
-            overflowY: 'scroll'
-        }}>
-            <table>
-                <tr>
-                    <th>X</th>
-                    <th>Y</th>
-                </tr>
+                const currentRow = data.points.points[y] ?? { x: 0, y: 0 }
+                currentRow[x === 0 ? 'x': 'y'] = value
+                data.points.points[y] = currentRow
+                data.needUpdate()
+            }}
+        />
+    </ScrollLayout>
+
+    return <VStack h='100%'>
+        <ScrollLayout flex={1}>
+            <VStack>
+                <HStack>
+                    <Layout flex={1}>X</Layout>
+                    <Layout flex={1}>Y</Layout>
+                </HStack>
+
                 {
-                    data.points.points.map((it, i) => <tr key={it.x+'_'+it.y+'_'+i}>
-                        <td>
+                    data.points.points.map((it, i) => <HStack key={it.x+'_'+it.y+'_'+i}>
+                        <Layout flex={1}>
                             <input style={{width: "100%", height: "100%"}} type="number" defaultValue={it.x} onBlur={e => {
                                 it.x = Number(e.currentTarget.value)
                                 data.needUpdate()
@@ -69,8 +88,8 @@ const PointsEditor = (data: {
                                     e.currentTarget.blur()
                                 }
                             }}/>
-                        </td>
-                        <td>
+                        </Layout>
+                        <Layout flex={1}>
                             <input style={{width: "100%", height: "100%"}} type="number" defaultValue={it.y} onBlur={e => {
                                 it.y = Number(e.currentTarget.value)
                                 data.needUpdate()
@@ -80,23 +99,25 @@ const PointsEditor = (data: {
                                     e.currentTarget.blur()
                                 }
                             }}/>
-                        </td>
-                        <td>
-                            <IconButton onClick={() => {
-                                data.points.points.splice(
-                                    i, 1
-                                )
+                        </Layout>
+                        {/*<td>*/}
+                        {/*    <IconButton onClick={() => {*/}
+                        {/*        data.points.points.splice(*/}
+                        {/*            i, 1*/}
+                        {/*        )*/}
 
-                                data.needUpdate()
-                            }} title="Удалить">
-                                <DeleteIcon/>
-                            </IconButton>
-                        </td>
-                    </tr>)
+                        {/*        data.needUpdate()*/}
+                        {/*    }} title="Удалить">*/}
+                        {/*        <DeleteIcon/>*/}
+                        {/*    </IconButton>*/}
+                        {/*</td>*/}
+                    </HStack>)
                 }
-            </table>
-        </div>
+            </VStack>
+        </ScrollLayout>
+    </VStack>
 
+    return <div>
         <Button mode="tertiary" stretched={true} before={<IconAdd/>} onClick={() => {
             data.points.points.push({ x: 0, y: 0 })
             data.needUpdate()
@@ -217,10 +238,10 @@ function SlideEditorInner({chart, needUpdate}: SlideEditorProps) {
         }
     }, [chart])
 
-    return <div>
-        <Layout
-            left={
-                <ResizableLayout width={400} maxWidth="500px" minWidth="300px">
+    return <PosLayout
+        le={
+            <ResizableLayout width={400} maxWidth="500px" minWidth="300px">
+                <VStack height='100%'>
                     <EditableHeader
                         title={chart.title}
                         onChangeText={text => {
@@ -235,26 +256,26 @@ function SlideEditorInner({chart, needUpdate}: SlideEditorProps) {
                     </Div>
 
                     <ChartPointsGroupEditor chart={chart} needUpdate={needUpdate}/>
-                </ResizableLayout>
-            }
+                </VStack>
+            </ResizableLayout>
+        }
 
-            content={
+        content={
+            <div style={{
+                width: '100%',
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                background: "#FFF"
+            }}>
                 <div style={{
-                    width: '100%',
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    background: "#FFF"
+                    width: "99%",
                 }}>
-                    <div style={{
-                        width: "99%",
-                    }}>
-                        <canvas id="chart" ref={canvasRef}/>
-                    </div>
+                    <canvas id="chart" ref={canvasRef}/>
                 </div>
-            }
-        />
-    </div>;
+            </div>
+        }
+    />;
 }
 
 class SlideEditor extends React.Component<SlideEditorProps, {

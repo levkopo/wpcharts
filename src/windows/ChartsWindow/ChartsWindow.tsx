@@ -1,30 +1,38 @@
-import {Layout} from "../../components/Layout/Layout";
+import {PosLayout} from "../../components/Layout/PosLayout";
 import {navigate, useTitle} from "../../App";
 import WindowHeader from "../../components/WindowHeader/WindowHeader";
 import {
-    AddIcon, Button,
-    Card,
-    Cell, ContextMenu, DeleteIcon, Dialog, Div,
-    Header, IconButton, NavigationListItem, Toolbar
+    Button,
+    DeleteIcon, Dialog, Header, Toolbar
 } from "@zationdev/ui";
-import NavigationLayout from "../../components/NavigationLayout/NavigationLayout";
 import ResizableLayout from "../../components/ResizableLayout/ResizableLayout";
 import MenuBar from "../../components/MenuBar/MenuBar";
 import MenuItem from "../../components/MenuItem/MenuItem";
 import {List} from "../../components/List/List";
-import {dialog, getCurrentWindow, require as remote_require} from "@electron/remote";
+import {dialog, require as remote_require} from "@electron/remote";
 
-import {ipcRenderer} from "electron";
-import Chart, {ChartType} from "../../core/models/Chart";
-import React, {useEffect, useState} from "react";
+import {ChartType} from "../../core/models/Chart";
+import React, {useState} from "react";
 import ChartsData from "../../core/models/ChartsData";
 import ContextRightMenu from "../../components/ContextRightMenu/ContextRightMenu";
 import SlideEditor from "../../components/SlideEditor/SlideEditor";
-import { unpack, pack } from 'msgpackr';
+import { pack } from 'msgpackr';
 import path from "path";
 import {addToRecentFiles} from "../../store";
 import {windowData} from "../../index";
 import HomeWindow from "../HomeWindow/HomeWindow";
+import {
+    Body,
+    Headline,
+    Card,
+    Layout,
+    ScrollLayout,
+    ThemeTokens,
+    VStack,
+    GridLayout,
+    Tappable,
+    Title
+} from "@znui/react";
 
 
 const types: Array<{
@@ -156,8 +164,8 @@ export default function ChartsWindow() {
         needUpdate()
     }
 
-    return <Layout
-        top={<>
+    return <PosLayout
+        te={<>
             <WindowHeader onClose={() => {
                 setDialog(<Dialog dismiss={() => setDialog(undefined)}>
                     <Toolbar title="Вы несохранили документ"/>
@@ -239,16 +247,25 @@ export default function ChartsWindow() {
             </MenuBar>
         </>}
 
-        left={
-            showSlidesList ? <>
-                <ResizableLayout width={200} maxWidth="40vw" minWidth="200px">
-                    <NavigationLayout>
-                        <Header
-                            title="Графики"
-                            mode="tertiary"
-                        />
+        le={
+            <ResizableLayout
+                hide={!showSlidesList}
+                width={200}
+                maxWidth="40vw"
+                minWidth="200px"
+            >
+                <VStack
+                    flex={1}
+                    h='100%'
+                    bg={ThemeTokens.surfaceContainer}
+                >
+                    <Header
+                        title="Графики"
+                        mode="tertiary"
+                    />
 
-                        <List>
+                    <ScrollLayout flex={1}>
+                        <VStack>
                             {
                                 presentationData.charts.map((it, index) => {
                                     return <ContextRightMenu
@@ -267,66 +284,64 @@ export default function ChartsWindow() {
                                             ]
                                         }}
                                     >
-                                        <Cell onClick={() => selectSlide(index)} style={{
-                                            borderRight: selectedChart===index?"var(--colorPrimaryContainer) solid 5px":undefined,
-                                            opacity: selectedChart!==index?"0.5":undefined,
-                                            borderRadius: "var(--zui-containers-round)"
-                                        }}>
-                                            {index+1}. {it.title}
-                                        </Cell>
+                                        <Layout
+                                            as={Tappable}
+                                            h='100%'
+                                            onClick={() => selectSlide(index)}
+                                            borderRight={
+                                                selectedChart===index? "solid 5px" : undefined
+                                            }
+                                            borderRightColor={ThemeTokens.primaryContainer}
+                                            ph={15}
+                                            pv={10}
+                                        >
+                                            <Body size='medium'>
+                                                {index+1}. {it.title}
+                                            </Body>
+                                        </Layout>
                                     </ContextRightMenu>
                                 })
                             }
-
-                            <div style={{height: 60}}/>
-                        </List>
-                    </NavigationLayout>
-                </ResizableLayout>
-            </> : <></>
+                        </VStack>
+                    </ScrollLayout>
+                </VStack>
+            </ResizableLayout>
         }
 
         content={
             presentationData.charts[selectedChart] === undefined ?
-                <div style={{
-                    overflow: "auto"
-                }}>
-                    <h2 style={{
-                        textAlign: "center",
-                        marginTop: "10vh",
-                        marginBottom: 15
-                    }}>Создайте свой первый график</h2>
+                <ScrollLayout>
+                    <VStack gap={15} mh={15}>
+                        <Headline style={{
+                            textAlign: "center",
+                            marginTop: "10vh",
+                            marginBottom: 15
+                        }}>Создайте свой первый график</Headline>
 
-                    <div style={{
-                        display: "grid",
-                        gridTemplateColumns: "25% 25% 25%",
-                        gap: 15,
-                        width: '100%'
-                    }}>
-                        {
-                            types.map(it =>
-                                <Card style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    padding: 15,
-                                    gap: 15,
-                                    width: "100%"
-                                }} key={it.id} onClick={() => createChart(it.id,
-                                    'Новый '+it.title+' ('+(presentationData.charts.length+1)+')')
-                                }>
-                                    <div style={{
-                                        width: "100%",
-                                        paddingBottom: "100%",
-                                    }}/>
-                                    <h3>{it.title}</h3>
-                                </Card>
-                            )
-                        }
-                    </div>
-                </div>:
+                        <GridLayout columns={[1, 2, 3]} gap={15}>
+                            {
+                                types.map(it =>
+                                    <Card
+                                        mode="filled"
+                                        as={Tappable}
+                                        key={it.id}
+                                        onClick={() => createChart(it.id,
+                                            'Новый '+it.title+' ('+(presentationData.charts.length+1)+')')
+                                        }
+                                    >
+                                        <VStack pv={10} ph={15}>
+                                            <Title>{it.title}</Title>
+                                        </VStack>
+                                    </Card>
+                                )
+                            }
+                        </GridLayout>
+                    </VStack>
+                </ScrollLayout>:
                 <SlideEditor charts={presentationData} chart={presentationData.charts[selectedChart]} needUpdate={needUpdate}/>
         }
 
-        bottom={
+        be={
             <MenuBar mode="secondary">
                 {
                     [

@@ -1,5 +1,6 @@
 const { app, BrowserWindow} = require('electron')
 const path = require('path')
+const fs = require('fs')
 const {...remote} = require("@electron/remote/main");
 
 remote.initialize()
@@ -28,7 +29,10 @@ const createWindow = () => {
     const startUrl = process.env.ELECTRON_START_URL || "file://"+path.join(__dirname, './index.html');
     console.log(startUrl);
     mainWindow.loadURL(startUrl+"#startup").then(() => {
-        mainWindow.webContents.send("data", filePath)
+        mainWindow.webContents.send("data",
+            fs.lstatSync(filePath).isFile() ? filePath:
+                undefined
+        )
     });
 }
 

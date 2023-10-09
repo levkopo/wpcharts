@@ -1,7 +1,6 @@
 .ResizableLayout-Handle {
     cursor: ew-resize;
     width: 3px;
-    background: var(--grayColor);
     opacity: 0.5;
 }
 

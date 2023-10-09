@@ -1,6 +1,7 @@
 import React from "react";
 import {MenuItemProps} from "../MenuItem/MenuItem"
 import "./MenuBar.css";
+import {Body, Center, HStack, Tappable, ThemeTokens} from "@znui/react";
 
 interface MenuBarProps {
     children: MenuItemProps[]
@@ -8,13 +9,25 @@ interface MenuBarProps {
 }
 
 export default function MenuBar(props: MenuBarProps) {
-    return <div className={"MenuBar MenuBar-"+(props.mode||"primary")}>
+    return <HStack
+        bg={ThemeTokens.surfaceContainer}
+        h={30}
+        ph={15}
+    >
         {
             props.children.map((it, index) =>
-                <div key={index} className="MenuBar-Item" onClick={() => {
-                    if(it.onClick) it.onClick()
-                }}>{it.title}</div>
+                <Center
+                    as={Tappable}
+                    key={index}
+                    ph={10}
+                    onClick={() => {
+                        if(it.onClick) it.onClick()
+                    }}>
+                    <Body>
+                        {it.title}
+                    </Body>
+                </Center>
             )
         }
-    </div>
+    </HStack>
 }

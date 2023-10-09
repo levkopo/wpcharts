@@ -1,16 +1,14 @@
 import React, {useState} from "react";
-import {AddIcon, Button, Cell, Dialog, Div, FloatingActionButton, Header, IconButton} from "@zationdev/ui";
-import {Layout} from "../../components/Layout/Layout";
+import {AddIcon, Button, Cell, Dialog, Div, Header, IconButton} from "@zationdev/ui";
+import {PosLayout} from "../../components/Layout/PosLayout";
 import WindowHeader from "../../components/WindowHeader/WindowHeader";
-import NavigationLayout from "../../components/NavigationLayout/NavigationLayout";
 import {List} from "../../components/List/List";
 import {navigate, openChartFromFile, useTitle} from "../../App";
 import ChartsWindow from "../ChartsWindow/ChartsWindow";
 import {addToRecentFiles, getRecentFiles} from "../../store";
 import {dialog as edialog, require as remote_require} from "@electron/remote";
-import {unpack} from "msgpackr";
-import ChartsData from "../../core/models/ChartsData";
 import IconOpenFile from "../../icons/IconOpenFile";
+import {FloatingActionButton, NavigationRail} from "@znui/react";
 
 export default function HomeWindow() {
     const [title, setTitle] = useTitle()
@@ -28,27 +26,28 @@ export default function HomeWindow() {
     }
 
     return (
-        <Layout
-            top={
+        <PosLayout
+            te={
                 <WindowHeader/>
             }
 
-            left={
-                <NavigationLayout>
-                    <div style={{
-                        padding: 10,
-                        display: "flex",
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 15
-                    }}>
-                        <FloatingActionButton icon={
+            le={
+                <NavigationRail
+                    h='100%'
+                    menu={
+                        <FloatingActionButton
+                            size="default"
+                            onClick={() => {
+                                navigate(ChartsWindow.PAGE_NAME, ChartsWindow.WINDOW_SETTINGS)
+                            }}
+                        >
                             <AddIcon/>
-                        } size={"56px"} onClick={() => {
-                            navigate(ChartsWindow.PAGE_NAME, ChartsWindow.WINDOW_SETTINGS)
-                        }}/>
-
-                        <IconButton onClick={() => {
+                        </FloatingActionButton>
+                    }
+                >
+                    <NavigationRail.Item
+                        title="Открыть файл"
+                        onClick={() => {
                             edialog.showOpenDialog({
                                 properties: ['openFile'],
                                 filters: [
@@ -66,11 +65,11 @@ export default function HomeWindow() {
                                     openFromFile(file.filePaths[0])
                                 }
                             })
-                        }}>
-                            <IconOpenFile/>
-                        </IconButton>
-                    </div>
-                </NavigationLayout>
+                        }}
+                    >
+                        <IconOpenFile/>
+                    </NavigationRail.Item>
+                </NavigationRail>
             }
             content={
                 <>

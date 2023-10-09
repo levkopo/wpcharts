@@ -9,6 +9,7 @@ import {BrowserWindow, getCurrentWindow, require as remote_require, screen} from
 import {BrowserWindowConstructorOptions} from "electron";
 import {unpack} from "msgpackr";
 import ChartsData from "./core/models/ChartsData";
+import {Layout, ThemeTokens} from "@znui/react";
 
 const titleContext = createContext<[string, (title: string) => void]>(['', () => undefined]);
 export function useTitle() {
@@ -20,6 +21,7 @@ const currentLocation = () => {
 };
 
 export const openChartFromFile = (path: string) => {
+    console.log("Opening file: "+path)
     const data = remote_require("fs").readFileSync(path)
     const unpackedData = unpack(data) as ChartsData
     navigate(ChartsWindow.PAGE_NAME, ChartsWindow.WINDOW_SETTINGS, unpackedData)
@@ -83,12 +85,18 @@ function App() {
 
     return (
         <titleContext.Provider value={[title, setTitle]}>
-            <AppRoot>
+            <Layout
+                pos='fixed'
+                posV={0}
+                posH={0}
+                bg={ThemeTokens.surface}
+                c={ThemeTokens.onSurface}
+            >
                 <Router hook={useHashLocation}>
                     <Route path={HomeWindow.PAGE_NAME} component={HomeWindow}/>
                     <Route path={ChartsWindow.PAGE_NAME} component={ChartsWindow}/>
                 </Router>
-            </AppRoot>
+            </Layout>
         </titleContext.Provider>
     );
 }
