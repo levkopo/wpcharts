@@ -1,6 +1,5 @@
 import React, {createContext, useContext, useEffect, useMemo, useState} from 'react';
 import './App.css';
-import {AppRoot, Dialog, Div} from "@zationdev/ui";
 import {Route, Router} from "wouter";
 import {Path} from "wouter/types/use-location";
 import HomeWindow from "./windows/HomeWindow/HomeWindow";
