@@ -2,23 +2,16 @@ import {PosLayout} from "../../components/Layout/PosLayout";
 import {navigate, useTitle} from "../../App";
 import WindowHeader from "../../components/WindowHeader/WindowHeader";
 import {
-    Button,
-    DeleteIcon, Dialog, Header, Toolbar
+    Header
 } from "@zationdev/ui";
 import ResizableLayout from "../../components/ResizableLayout/ResizableLayout";
 import MenuBar from "../../components/MenuBar/MenuBar";
 import MenuItem from "../../components/MenuItem/MenuItem";
-import {List} from "../../components/List/List";
-import {dialog, require as remote_require} from "@electron/remote";
-
 import {ChartType} from "../../core/models/Chart";
 import React, {useCallback, useEffect, useState} from "react";
 import ChartsData from "../../core/models/ChartsData";
 import ContextRightMenu from "../../components/ContextRightMenu/ContextRightMenu";
 import SlideEditor from "../../components/SlideEditor/SlideEditor";
-import { pack } from 'msgpackr';
-import path from "path";
-import {addToRecentFiles} from "../../store";
 import {windowData} from "../../index";
 import HomeWindow from "../HomeWindow/HomeWindow";
 import {
@@ -31,10 +24,15 @@ import {
     VStack,
     GridLayout,
     Tappable,
-    Title, useDialogs
+    Title, useDialogs, HStack, Center
 } from "@znui/react";
 import {openWPCFileInWindow, readWPCFile, selectWPCFile} from "../../file/openWPCFile";
 import {printWPCFile} from "../../file/exportWPCFile";
+import {buildChartObject} from "../../core/models/builder";
+import {saveWPCFile, saveWPCFileAs} from "../../file/saveWPCFile";
+import {DEFAULT_SIZE} from "../../core/models/constants";
+import {ExportModal} from "../../components/SlideEditor/ExportModal";
+import {ZnUIIconDeleteFilled} from "@znui/icons";
 
 
 export const types: Array<{
@@ -75,52 +73,6 @@ export const types: Array<{
     },
 ]
 
-export const saveWPCFile = (presentationData: ChartsData, onSave: () => void) => {
-    if(!presentationData.path) {
-        saveAsFile(presentationData, onSave)
-        return
-    }
-
-    remote_require("fs").writeFile(presentationData.path,
-        pack(presentationData),
-        function (err: Error) {
-            if(err) {
-                saveAsFile(presentationData, onSave)
-                return
-            }
-
-            addToRecentFiles({
-                path: presentationData.path!!,
-                lastEdit: Date.now()
-            })
-
-            presentationData.saved = true
-            onSave()
-        });
-}
-
-export const saveAsFile = (presentationData: ChartsData, onSave: () => void) => {
-    dialog.showSaveDialog({
-        defaultPath:  presentationData.path || path.join(__dirname, "untitled.wpc"),
-        filters: [
-            {
-                name: 'WPCharts File',
-                extensions: ['wpc']
-            },
-        ],
-        properties: []
-    }).then(file => {
-        if (!file.canceled) {
-            const path = file.filePath!!
-
-            presentationData.path = path.toString()
-            saveWPCFile(presentationData, onSave)
-        }
-    }).catch(err => {
-        console.log(err)
-    });
-}
-
 export default function ChartsWindow() {
     const [title, setTitle] = useTitle()
 
@@ -135,66 +87,89 @@ export default function ChartsWindow() {
     }
 
     const needUpdate = useCallback((action: boolean = true) => {
-        setChartsData({
-            ...chartsData,
-            saved: !action
-        })
+        const clone = structuredClone(chartsData)
+        clone.saved = !action
+        setChartsData(clone)
     }, [chartsData])
 
-    const createChart = (type: ChartType, title: string) => {
+    const createChart = useCallback((type: ChartType, title: string) => {
         chartsData.charts.push(
-            {
-                title: title,
-                type: type,
-                creationDate: Date.now(),
-                points: [
-                    {
-                        points: [
-                            { x: 0.000888, y: 0 },
-                            { x: 0.9921, y: 1 },
-                            { x: 556.8, y: 2 },
-                            { x: 578.5, y: 4 },
-                            { x: 602.6, y: 8 },
-                            { x: 618.1, y: 12 },
-                            { x: 629.6, y: 16 },
-                            { x: 638.9, y: 20 },
-                        ]
-                    },
-                    {
-                        points: [
-                            { x: 0, y: 0 },
-                            { x: 538.1, y: 1 },
-                            { x: 558.3, y: 2 },
-                            { x: 580.1, y: 4 },
-                            { x: 604.4, y: 8 },
-                            { x: 620.0, y: 12 },
-                            { x: 631.6, y: 16 },
-                            { x: 640.9, y: 20 },
-                        ]
-                    }
-                ]
-            }
+            buildChartObject(type, title)
         )
 
         needUpdate()
-    }
+    }, [needUpdate, chartsData])
+    
+    const exportChart = useCallback(() => {
+        dialogs.showModal((rest) =>
+            <ExportModal {...rest}
+                         charts={chartsData.charts}
+                         currentChart={selectedChart}
+            />
+        )
+    }, [dialogs, chartsData, selectedChart])
+    
+    const openFile = useCallback(() => {
+        selectWPCFile((path) => {
+            dialogs.showAlert({
+                title: 'Открытие проекта',
+                description: 'Где вы желаете открыть проект?',
+                actions: [
+                    {
+                        title: 'В текущем окне',
+                        cancel: true,
+                        onClick: () => {
+                            setChartsData(readWPCFile(path))
+                        }
+                    },
+                    {
+                        title: 'В новом окне',
+                        cancel: true,
+                        onClick: () => {
+                            openWPCFileInWindow(path, false)
+                        }
+                    },
+                    {
+                        title: 'Отмена',
+                        cancel: true
+                    }
+                ]
+            })
+        })
+    }, [dialogs])
 
     useEffect(() => {
         const shortcutsHandler = (e: KeyboardEvent) => {
             if(e.ctrlKey) {
                 switch (e.key) {
                     case 's':
-                        saveWPCFile(chartsData, () => {
+                        if(e.shiftKey) {
+                            saveWPCFileAs(chartsData, () => {
+                                needUpdate(false)
+                            })
+                        }else saveWPCFile(chartsData, () => {
                             needUpdate(false)
                         })
-                        return
+                        return;
+                    
+                    case 'o':
+                        openFile()
+                        return;
+
+                    case 'p':
+                        printWPCFile(chartsData)
+                        return;
+
+                    case 'e':
+                        exportChart()
+                        return;
                 }
             }
         }
         
         window.addEventListener('keyup', shortcutsHandler)
         return () => window.removeEventListener('keyup', shortcutsHandler)
-    }, [chartsData, needUpdate])
+    }, [chartsData, exportChart, needUpdate, openFile])
 
     return <PosLayout
         te={<>
@@ -224,7 +199,7 @@ export default function ChartsWindow() {
                         {
                             title: "Сохранить",
                             onClick: () => {
-                                saveAsFile(chartsData, () => {
+                                saveWPCFileAs(chartsData, () => {
                                     navigate(HomeWindow.PAGE_NAME, {
                                         ...HomeWindow.WINDOW_SETTINGS,
                                         closeWindow: true
@@ -248,34 +223,7 @@ export default function ChartsWindow() {
                             children: [
                                 {
                                     title: 'Открыть',
-                                    onClick: () => {
-                                        selectWPCFile((path) => {
-                                            dialogs.showAlert({
-                                                title: 'Открытие проекта',
-                                                description: 'Где вы желаете открыть проект?',
-                                                actions: [
-                                                    {
-                                                        title: 'В текущем окне',
-                                                        cancel: true,
-                                                        onClick: () => {
-                                                            setChartsData(readWPCFile(path))
-                                                        }
-                                                    },
-                                                    {
-                                                        title: 'В новом окне',
-                                                        cancel: true,
-                                                        onClick: () => {
-                                                            openWPCFileInWindow(path, false)
-                                                        }
-                                                    },
-                                                    {
-                                                        title: 'Отмена',
-                                                        cancel: true
-                                                    }
-                                                ]
-                                            })
-                                        })
-                                    }
+                                    onClick: openFile
                                 },
                                 {
                                     title: 'Сохранить',
@@ -288,7 +236,7 @@ export default function ChartsWindow() {
                                 {
                                     title: 'Сохранить как...',
                                     onClick: () => {
-                                        saveAsFile(chartsData, () => {
+                                        saveWPCFileAs(chartsData, () => {
                                             needUpdate(false)
                                         })
                                     }
@@ -301,31 +249,7 @@ export default function ChartsWindow() {
                                 },
                                 {
                                     title: "Экспорт в PNG",
-                                    onClick: () => {
-                                        dialog.showSaveDialog({
-                                            defaultPath: path.join(__dirname, '../'+chartsData.charts[selectedChart].title+'.png'),
-                                            filters: [
-                                                {
-                                                    name: 'PNG',
-                                                    extensions: ['png']
-                                                },
-                                            ],
-                                            properties: []
-                                        }).then((file) => {
-                                            if (!file.canceled) {
-                                                const base64Data = (document.getElementById("chart") as HTMLCanvasElement)
-                                                    .toDataURL("image/png")
-                                                    .replace(/^data:image\/png;base64,/, "");
-
-                                                remote_require('fs').writeFile(
-                                                    file.filePath!!.toString(),
-                                                    base64Data,
-                                                    'base64',
-                                                    () => {}
-                                                );
-                                            }
-                                        })
-                                    }
+                                    onClick: exportChart
                                 }
                             ]
                         }),
@@ -369,7 +293,7 @@ export default function ChartsWindow() {
                                         menu={(i) => {
                                             return [
                                                 {
-                                                    icon: <DeleteIcon/>,
+                                                    icon: <ZnUIIconDeleteFilled/>,
                                                     title: "Удалить",
                                                     onClick: () => {
                                                         chartsData.charts.splice(index, 1)
@@ -438,16 +362,94 @@ export default function ChartsWindow() {
         }
 
         be={
-            <MenuBar mode="secondary">
-                {
-                    [
-                        MenuItem({
-                            title: "Кол-во графиков: " + chartsData.charts.length,
-                            onClick: () => setShowSlidesList(!showSlidesList)
-                        })
-                    ]
-                }
-            </MenuBar>
+            <HStack bg={ThemeTokens.surfaceContainer} justifyContent='space-between'>
+                <MenuBar mode="secondary">
+                    {
+                        [
+                            MenuItem({
+                                title: "Кол-во графиков: " + chartsData.charts.length,
+                                onClick: () => setShowSlidesList(!showSlidesList)
+                            }),
+                        ]
+                    }
+                </MenuBar>
+
+                <HStack
+                    bg={ThemeTokens.surfaceContainer}
+                    h={30}
+                    ph={15}
+                >
+                    {
+                        chartsData.charts[selectedChart] && <>
+                            <Center
+                                ph={10}
+                                gap={3}
+                            >
+                                <Body>Ширина: </Body>
+                                <Body
+                                    contentEditable={true}
+                                    suppressContentEditableWarning={true}
+                                    role="textbox"
+                                    cursor='text'
+                                    onWheel={(e) => {
+                                        const change = e.deltaY > 0 ? 1: -1
+                                        chartsData.charts[selectedChart].size.width += change
+                                    }}
+                                    onBlur={e => {
+                                        let width = parseFloat(e.currentTarget.innerText)
+                                        if(isNaN(width)) {
+                                            width = DEFAULT_SIZE.width
+                                        }
+
+                                        e.currentTarget.innerText = width.toString()
+                                        chartsData.charts[selectedChart].size.width = width
+                                        needUpdate()
+                                    }} onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault()
+                                            e.currentTarget.blur()
+                                        }
+                                    }}
+                                >{chartsData.charts[selectedChart].size.width}</Body>
+                                <Body> px</Body>
+                            </Center>
+
+                            <Center
+                                ph={10}
+                                gap={3}
+                            >
+                                <Body>Высота: </Body>
+                                <Body
+                                    contentEditable={true}
+                                    suppressContentEditableWarning={true}
+                                    role="textbox"
+                                    cursor='text'
+                                    onWheel={(e) => {
+                                        const change = e.deltaY > 0 ? 1: -1
+                                        chartsData.charts[selectedChart].size.width += change
+                                    }}
+                                    onBlur={e => {
+                                        let height = parseFloat(e.currentTarget.innerText)
+                                        if(isNaN(height)) {
+                                            height = DEFAULT_SIZE.height
+                                        }
+
+                                        e.currentTarget.innerText = height.toString()
+                                        chartsData.charts[selectedChart].size.height = height
+                                        needUpdate()
+                                    }} onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault()
+                                            e.currentTarget.blur()
+                                        }
+                                    }}
+                                >{chartsData.charts[selectedChart].size.height}</Body>
+                                <Body> px</Body>
+                            </Center>
+                        </>
+                    }
+                </HStack>
+            </HStack>
         }
     />
 }

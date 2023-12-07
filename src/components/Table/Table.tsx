@@ -8,6 +8,8 @@ export interface TableCellProps extends LayoutProps {
     y: number
     moveTo?: (x: number, y: number) => void
     onChanged?: (value: string) => void
+    remove?: () => void
+    clean?: () => void
 }
 
 type TableCellRef = {
@@ -23,6 +25,8 @@ const TableCell = React.forwardRef(
             value,
             header,
             moveTo,
+            remove,
+            clean,
             x,
             y,
             onChanged,
@@ -43,6 +47,7 @@ const TableCell = React.forwardRef(
             textAlign='start'
             border='solid 1px'
             w={100}
+            cursor='text'
             borderColor={ThemeTokens.outlineVariant}
             bg={header? ThemeTokens.surfaceContainer: undefined}
             onClick={() => {
@@ -55,6 +60,7 @@ const TableCell = React.forwardRef(
             {
                 isEditMode ?
                     <Input
+                        fontWeight={header ? 600: undefined}
                         w='100%'
                         fontSize={14}
                         type="text"
@@ -65,32 +71,53 @@ const TableCell = React.forwardRef(
                                 onChanged?.call(undefined, e.currentTarget.value)
                             }
                         }}
+                        onFocus={(e) => {
+                            if(e.currentTarget.value === '0') {
+                                e.currentTarget.value = ''
+                            }
+                        }}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                                 e.preventDefault()
-                                e.currentTarget.blur()
                                 setTimeout(() => moveTo?.call(undefined, x, y+1))
                             }
 
-                            if (e.code.startsWith('Arrow')) {
+                            if(e.key === 'Delete') {
                                 e.preventDefault()
-                                e.currentTarget.blur()
+                                if(e.shiftKey) {
+                                    setTimeout(() => {
+                                        remove?.call(undefined)
+                                    })
+                                }else{
+                                    clean?.call(undefined)
+                                    e.currentTarget.value = ''
+                                }
+                            }
 
+                            if (e.code.startsWith('Arrow')) {
                                 const arrowKey = e.code.replaceAll('Arrow', '');
                                 if(arrowKey === 'Down') {
+                                    e.preventDefault()
                                     setTimeout(() => moveTo?.call(undefined, x, y+1))
                                 }else if(arrowKey === 'Up') {
+                                    e.preventDefault()
                                     setTimeout(() => moveTo?.call(undefined, x, y-1))
-                                }else if(arrowKey === 'Left') {
-                                    setTimeout(() => moveTo?.call(undefined, x-1, y))
-                                }else if(arrowKey === 'Right') {
-                                    setTimeout(() => moveTo?.call(undefined, x+1, y))
+                                }else{
+                                    if(arrowKey === 'Left' && (e.currentTarget.selectionStart === 0 || e.ctrlKey)) {
+                                        e.preventDefault()
+                                        setTimeout(() => moveTo?.call(undefined, x-1, y))
+                                    }else if(arrowKey === 'Right' && (e.currentTarget.selectionStart === e.currentTarget.value.length || e.ctrlKey)) {
+                                        e.preventDefault()
+                                        setTimeout(() => moveTo?.call(undefined, x+1, y))
+                                    }
                                 }
                             }
                         }}
                         defaultValue={value}
                     />
-                    : value
+                    : <Layout ph={2}>
+                        {value}
+                    </Layout>
             }
         </Layout>
     }
@@ -101,17 +128,18 @@ export interface TableProps extends LayoutProps {
     table: any[][]
     onChangedAxe: (axe: number, title: string) => void
     onChanged: (x: number, y: number, value: string) => void
+    remove: (y: number) => void
 }
 
 export default function Table(props: TableProps) {
     const itemsRef = useRef<TableCellRef[][]>([]);
-    const [selection, select] = useState([0,0])
 
     const {
         table,
         xHeaders,
         onChanged,
         onChangedAxe,
+        remove,
         ...rest
     } = props
 
@@ -120,8 +148,11 @@ export default function Table(props: TableProps) {
         if(nextRow) {
             if(x >= 0) {
                 nextRow[x].edit()
+                return true
             }
         }
+
+        return false
     }
 
     return <Layout
@@ -175,7 +206,14 @@ export default function Table(props: TableProps) {
                                 onChanged={(value) => {
                                     onChanged(x, y, value)
                                 }}
-                                key={x}
+                                key={`${x}_${y}`}
+                                clean={() => {
+                                    onChanged(0, y, '0')
+                                    onChanged(1, y, '0')
+                                }}
+                                remove={() => {
+                                    remove(y)
+                                }}
                                 header={false}
                                 value={item}
                                 moveTo={moveTo}

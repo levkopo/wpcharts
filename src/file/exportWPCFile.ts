@@ -1,10 +1,8 @@
-import {dialog as edialog, require as remote_require} from "@electron/remote";
-import {addToRecentFiles} from "../store";
-import {unpack} from "msgpackr";
+import {BrowserWindow} from "@electron/remote";
 import ChartsData from "../core/models/ChartsData";
-import ChartsWindow from "../windows/ChartsWindow/ChartsWindow";
-import {navigate} from "../App";
 import {buildGraphObject} from "./buildGraph";
+import {Chart as ChartJS} from "chart.js";
+import Chart from "../core/models/Chart";
 
 export const printWPCFile = (file: ChartsData) => {
     let windowContent = '<!DOCTYPE html>';
@@ -12,47 +10,60 @@ export const printWPCFile = (file: ChartsData) => {
     windowContent += '<head><title>Print canvas</title></head>';
     windowContent += '<body>'
 
+    let graphs: ChartJS[]  = []
     for (const chart of file.charts) {
         const canvas = document.createElement('canvas');
-        canvas.height = 240;
-        canvas.width = 340;
-
-        canvas.style.width  = '240px';
-        canvas.style.height = '340px';
-
         document.body.append(canvas)
 
         const graph = buildGraphObject(canvas, chart);
-        graph.draw()
+        const width = chart.size.width
+        const height = chart.size.height
 
-        windowContent += '<img src="' + canvas.toDataURL() + '" alt="">';
-        graph.destroy()
+        graph.resize(width, height)
+        graph.draw()
+        graphs.push(graph)
+
+        windowContent += '<img src="' + canvas.toDataURL() + '" width="'+width+'" height="'+height+'" alt="">';
+        canvas.remove()
     }
 
     windowContent += '</body>';
     windowContent += '</html>';
 
-    const printWin = window.open('','','width=340,height=240')!!;
-    printWin.document.open();
-    printWin.document.write(windowContent);
-    printWin.document.close();
-    setTimeout(() => {
-        printWin.focus();
-        printWin.print();
-        printWin.close();
-    }, 1000)
+    graphs.forEach(it => it.destroy())
+
+    let win = new BrowserWindow({
+        show: false,
+        webPreferences: {
+            nodeIntegration: true
+        }
+    });
+
+    win.webContents.loadURL('data:text/html;charset=utf-8,'+windowContent);
+    win.webContents.on('did-finish-load', () => {
+        win.webContents.print({}, (success, failureReason) => {
+            if (!success) console.log(failureReason);
+
+            win.destroy()
+        });
+    });
 }
 
-// export const readWPCFile = (path: string): ChartsData => {
-//     const data = remote_require("fs").readFileSync(path)
-//     const chart = unpack(data) as ChartsData
-//     chart.saved = true
-//     return chart
-// }
-//
-// export const openWPCFileInWindow = (path: string, closeWindow: boolean = true) => {
-//     navigate(ChartsWindow.PAGE_NAME, {
-//         ...ChartsWindow.WINDOW_SETTINGS,
-//         closeWindow
-//     }, readWPCFile(path))
-// }
+export const exportPNG = (chart: Chart) => {
+    const canvas = document.createElement('canvas');
+    document.body.append(canvas)
+
+    const graph = buildGraphObject(canvas, chart);
+    const width = chart.size.width
+    const height = chart.size.height
+
+    graph.resize(width, height)
+    graph.draw()
+
+    const data = canvas.toDataURL()
+
+    canvas.remove()
+    graph.destroy()
+
+    return data.replace(/^data:image\/png;base64,/, "")
+}

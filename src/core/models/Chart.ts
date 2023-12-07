@@ -6,6 +6,10 @@ export default interface Chart {
     title: string
     type: ChartType
     creationDate: number
-    axes?: string[]
+    axes: string[]
+    size: {
+        width: number,
+        height: number
+    }
     points: Points[]
 }

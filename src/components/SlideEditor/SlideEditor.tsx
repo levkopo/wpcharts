@@ -10,7 +10,7 @@ import EditableHeader from "../EditableHeader/EditableHeader";
 import Points from "../../core/models/Points";
 import ResizableLayout from "../ResizableLayout/ResizableLayout";
 import {PosLayout} from "../Layout/PosLayout";
-import {saveAsFile, types} from "../../windows/ChartsWindow/ChartsWindow";
+import {types} from "../../windows/ChartsWindow/ChartsWindow";
 import ChartsData from "../../core/models/ChartsData";
 import {getCurrentWindow} from "@electron/remote";
 import {
@@ -28,6 +28,8 @@ import {SelectGroupModal} from "./SelectGroupModal";
 import {SwapHorizIcon} from "../../icons/SwapHorizIcon";
 import {MopIcon} from "../../icons/MopIcon";
 import {buildGraphObject} from "../../file/buildGraph";
+import {DEFAULT_AXES} from "../../core/models/constants";
+import {saveWPCFileAs} from "../../file/saveWPCFile";
 
 ChartJS.register(...registerables);
 
@@ -51,18 +53,18 @@ const PointsEditor = (data: {
             w='100%'
             ph={15}
             pt={15}
+            remove={(y) => {
+                data.points.points.splice(y, 1)
+                data.needUpdate()
+            }}
             table={data.points.points.map(it => [it.x, it.y])}
-            xHeaders={data.chart.axes ?? ['X', 'Y']}
+            xHeaders={data.chart.axes}
             onChangedAxe={(axe, title) => {
-                if (!data.chart.axes) {
-                    data.chart.axes = ['X', 'Y']
-                }
-
-                data.chart.axes[axe] = title
+                data.chart.axes[axe] = title.length === 0 ? DEFAULT_AXES[axe] : title
                 data.needUpdate()
             }}
             onChanged={(x, y, rawValue) => {
-                const value = parseFloat(rawValue)
+                const value = rawValue === '' ? 0: parseFloat(rawValue)
                 if (isNaN(value)) {
                     snackbar({
                         text: 'Не удалось обработать значение. Ожидалось значение типа "число"'
@@ -99,7 +101,7 @@ const ChartPointsGroupEditor = (data: {
                                 groups={data.chart.points}
                                 updateGroups={(groups) => {
                                     data.chart.points = groups
-                                    if(points >= data.chart.points.length) {
+                                    if (points >= data.chart.points.length) {
                                         setPoints(data.chart.points.length - 1)
                                     }
 
@@ -142,14 +144,14 @@ const ChartPointsGroupEditor = (data: {
                 onClick={() => {
                     dialogs.showAlert({
                         title: 'Вы уверены?',
-                        description: 'Это отчистит таблицу полностью',
+                        description: 'Это очистит таблицу полностью',
                         actions: [
                             {
                                 title: 'Отмена',
                                 cancel: true
                             },
                             {
-                                title: 'Отчистить таблицу',
+                                title: 'Очистить таблицу',
                                 cancel: true,
                                 onClick: () => {
                                     currentPoints.points = []
@@ -164,9 +166,9 @@ const ChartPointsGroupEditor = (data: {
             </ContainedIconButton>
         </HStack>
         {<PointsEditor chart={data.chart}
-                          key={points} 
-                          points={currentPoints}
-                          needUpdate={data.needUpdate}/>}
+                       key={points}
+                       points={currentPoints}
+                       needUpdate={data.needUpdate}/>}
     </>
 }
 
@@ -174,7 +176,10 @@ function SlideEditorInner({chart, needUpdate}: SlideEditorProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
     useEffect(() => {
-        const canvas = canvasRef.current!!
+        const canvas = canvasRef.current
+        if (canvas == null) {
+            return
+        }
 
         const renderedChart = buildGraphObject(canvas, chart);
         return () => {
@@ -253,7 +258,7 @@ class SlideEditor extends React.Component<SlideEditorProps, {
                     }
                     actions={
                         <Button onClick={() => {
-                            saveAsFile(this.props.charts, () => {
+                            saveWPCFileAs(this.props.charts, () => {
                                 getCurrentWindow().close()
                             })
                         }}>Сохранить файл и выйти</Button>

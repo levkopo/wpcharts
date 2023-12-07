@@ -4,6 +4,8 @@ import {unpack} from "msgpackr";
 import ChartsData from "../core/models/ChartsData";
 import ChartsWindow from "../windows/ChartsWindow/ChartsWindow";
 import {navigate} from "../App";
+import ChartsFileData from "../core/file_models/ChartsFileData";
+import {decodeChartFile} from "../core/models/coder";
 
 export const selectWPCFile = (onSelect: (path: string) => void) => {
     edialog.showOpenDialog({
@@ -28,9 +30,8 @@ export const selectWPCFile = (onSelect: (path: string) => void) => {
 
 export const readWPCFile = (path: string): ChartsData => {
     const data = remote_require("fs").readFileSync(path)
-    const chart = unpack(data) as ChartsData
-    chart.saved = true
-    return chart
+    const chart = unpack(data) as ChartsFileData
+    return decodeChartFile(chart, path)
 }
 
 export const openWPCFileInWindow = (path: string, closeWindow: boolean = true) => {

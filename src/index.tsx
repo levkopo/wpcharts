@@ -3,10 +3,11 @@ import ReactDOM from 'react-dom/client';
 import '@zationdev/ui/dist/index.css';
 import "@znui/react/dist/index.css";
 import './index.css';
-import App, {navigate, openChartFromFile} from './App';
+import App, {navigate} from './App';
 import {ipcRenderer} from "electron";
 import HomeWindow from "./windows/HomeWindow/HomeWindow";
 import {AdaptiveProvider, ThemeProvider} from "@znui/react";
+import {openWPCFileInWindow} from "./file/openWPCFile";
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -33,7 +34,7 @@ ipcRenderer.on("data", (_, data) => {
                     closeWindow: true
                 })
             }else{
-                openChartFromFile(windowData)
+                openWPCFileInWindow(windowData)
             }
 
         }, 5 * 1000)

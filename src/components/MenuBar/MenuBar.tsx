@@ -4,8 +4,8 @@ import "./MenuBar.css";
 import {Body, Center, HStack, Menu, Tappable, ThemeTokens} from "@znui/react";
 
 interface MenuBarProps {
-    children: MenuItemProps[]
-    mode?: "primary"|"secondary"
+    children: (MenuItemProps | undefined)[]
+    mode?: "primary" | "secondary"
 }
 
 export default function MenuBar(props: MenuBarProps) {
@@ -15,12 +15,12 @@ export default function MenuBar(props: MenuBarProps) {
         ph={15}
     >
         {
-            props.children.map((it, index) => {
+            props.children.filter(it => !!it).map((it, index) => {
                 const item = <Body>
-                    {it.title}
+                    {it!!.title}
                 </Body>
 
-                if(it.children) {
+                if (it!!.children) {
                     return <Menu key={index} density={1}>
                         <Menu.Trigger mode='click'>
                             <Center
@@ -31,7 +31,7 @@ export default function MenuBar(props: MenuBarProps) {
                         </Menu.Trigger>
 
                         <Menu.Items>
-                            {it.children.map((it, index) =>
+                            {it!!.children.map((it, index) =>
                                 <Menu.Item icon={it.icon} key={index} onClick={it.onClick}>
                                     {it.title}
                                 </Menu.Item>
@@ -45,7 +45,7 @@ export default function MenuBar(props: MenuBarProps) {
                     key={index}
                     ph={10}
                     onClick={() => {
-                        if(it.onClick) it.onClick()
+                        if (it!!.onClick) it!!.onClick()
                     }}>
                     {item}
                 </Center>

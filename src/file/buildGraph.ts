@@ -11,6 +11,8 @@ const COLORS = [
     'rgba(201, 203, 207, 1)'
 ]
 
+// const getColorByVar = (name: string) => getComputedStyle(document.body).getPropertyValue('--'+name);
+
 export const buildGraphObject = (canvas: HTMLCanvasElement, chart: Chart) => {
     return new ChartJS(
         canvas,
@@ -34,6 +36,7 @@ export const buildGraphObject = (canvas: HTMLCanvasElement, chart: Chart) => {
                 }))
             },
 
+
             plugins: [
                 {
                     id: 'backgroundColor',
@@ -49,6 +52,8 @@ export const buildGraphObject = (canvas: HTMLCanvasElement, chart: Chart) => {
             ],
 
             options: {
+                aspectRatio: chart.size.width / chart.size.height,
+
                 plugins: {
                     title: {
                         display: true,
@@ -64,14 +69,14 @@ export const buildGraphObject = (canvas: HTMLCanvasElement, chart: Chart) => {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: chart.axes?.at(1) ?? 'Y',
+                            text: chart.axes[1],
                             align: 'end'
                         }
                     },
                     x: {
                         title: {
                             display: true,
-                            text: chart.axes?.at(0) ?? 'X',
+                            text: chart.axes[0],
                             align: 'end'
                         }
                     }

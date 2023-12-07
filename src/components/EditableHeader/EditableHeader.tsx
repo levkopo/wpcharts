@@ -26,7 +26,7 @@ export default function EditableHeader(props: EditableHeaderProps) {
         <div className={"Header-Titles"} style={{width: '100%'}}>
             <div className="Header-Title" style={{fontWeight: 500, width: '100%', height: 18}}>
                 {before&&<div className="Header-Before">{before}</div>}
-                <Title size='large' as='span' contentEditable={true} suppressContentEditableWarning={true} role="textbox" onBlur={e => {
+                <Title cursor='text' size='large' as='span' contentEditable={true} suppressContentEditableWarning={true} role="textbox" onBlur={e => {
                     const text = e.currentTarget.innerText.length === 0 || e.currentTarget.innerText.length > 200 ?
                         "untitled": e.currentTarget.innerText
 

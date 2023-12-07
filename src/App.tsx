@@ -18,14 +18,6 @@ export function useTitle() {
 const currentLocation = () => {
     return window.location.hash.replace(/^#/, "") || "/";
 };
-
-export const openChartFromFile = (path: string) => {
-    console.log("Opening file: "+path)
-    const data = remote_require("fs").readFileSync(path)
-    const unpackedData = unpack(data) as ChartsData
-    navigate(ChartsWindow.PAGE_NAME, ChartsWindow.WINDOW_SETTINGS, unpackedData)
-}
-
 export const navigate = (to: string, settings: BrowserWindowConstructorOptions & {
     closeWindow?: boolean
 } = {}, data: any = undefined) => {
