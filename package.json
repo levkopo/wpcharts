@@ -10,7 +10,7 @@
   "homepage": "./",
   "dependencies": {
     "@babel/core": "^7.16.0",
-    "@electron/remote": "^2.0.8",
+    "@electron/remote": "^2.1.0",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.3",
     "@rive-app/canvas": "^1.0.93",
     "@rive-app/react-canvas": "^3.0.28",
@@ -114,7 +114,8 @@
       "category": "Network"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "./build/icon.png"
     },
     "nsis": {
       "perMachine": true

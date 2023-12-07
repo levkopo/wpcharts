@@ -14,7 +14,7 @@ const createWindow = () => {
         minWidth: 630,
         minHeight: 200,
         frame: false,
-        icon: __dirname + '/resources/android-chrome-512x512.png',
+        icon: __dirname + '/icon.png',
         webPreferences: {
             nodeIntegration: true,
             nodeIntegrationInSubFrames: true,
