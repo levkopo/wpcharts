@@ -1,14 +1,8 @@
-import React, {ErrorInfo, useEffect, useRef, useState} from 'react'
+import React, {ErrorInfo, useEffect, useMemo, useRef, useState} from 'react'
 import Chart from "../../core/models/Chart";
 import {
-    Button,
-    DeleteIcon,
     Dialog,
-    Div,
-    IconButton,
-    Link,
-    Tabs,
-    TabsItem
+    Link
 } from "@zationdev/ui";
 import Placeholder from "../Placeholder/Placeholder";
 import {Chart as ChartJS, registerables} from "chart.js";
@@ -16,12 +10,24 @@ import EditableHeader from "../EditableHeader/EditableHeader";
 import Points from "../../core/models/Points";
 import ResizableLayout from "../ResizableLayout/ResizableLayout";
 import {PosLayout} from "../Layout/PosLayout";
-import IconAdd from "../../icons/IconAdd";
-import {saveFile} from "../../windows/ChartsWindow/ChartsWindow";
+import {saveAsFile, types} from "../../windows/ChartsWindow/ChartsWindow";
 import ChartsData from "../../core/models/ChartsData";
 import {getCurrentWindow} from "@electron/remote";
-import {HStack, Layout, ScrollLayout, useSnackbar, VStack} from "@znui/react";
+import {
+    Button,
+    Body,
+    ScrollLayout,
+    useSnackbar,
+    VStack,
+    HStack,
+    useDialogs,
+    ContainedIconButton, IconWrapper
+} from "@znui/react";
 import Table from "../Table/Table";
+import {SelectGroupModal} from "./SelectGroupModal";
+import {SwapHorizIcon} from "../../icons/SwapHorizIcon";
+import {MopIcon} from "../../icons/MopIcon";
+import {buildGraphObject} from "../../file/buildGraph";
 
 ChartJS.register(...registerables);
 
@@ -31,133 +37,137 @@ export interface SlideEditorProps {
     needUpdate: () => void
 }
 
-const COLORS = [
-    'rgba(255, 99, 132, 1)',
-    'rgba(255, 159, 64, 1)',
-    'rgba(255, 205, 86, 1)',
-    'rgba(75, 192, 192, 1)',
-    'rgba(54, 162, 235, 1)',
-    'rgba(153, 102, 255, 1)',
-    'rgba(201, 203, 207, 1)'
-]
-
 const PointsEditor = (data: {
     points: Points,
+    chart: Chart,
     needUpdate: () => void
 }) => {
     const snackbar = useSnackbar()
 
-    return <ScrollLayout flex={1}>
+    return <ScrollLayout
+        flex={1}
+    >
         <Table
-            table={data.points.points.map(it=>[ it.x, it.y ])}
-            xHeaders={['X', 'Y']}
+            w='100%'
+            ph={15}
+            pt={15}
+            table={data.points.points.map(it => [it.x, it.y])}
+            xHeaders={data.chart.axes ?? ['X', 'Y']}
+            onChangedAxe={(axe, title) => {
+                if (!data.chart.axes) {
+                    data.chart.axes = ['X', 'Y']
+                }
+
+                data.chart.axes[axe] = title
+                data.needUpdate()
+            }}
             onChanged={(x, y, rawValue) => {
                 const value = parseFloat(rawValue)
-                if(isNaN(value)) {
+                if (isNaN(value)) {
                     snackbar({
                         text: 'Не удалось обработать значение. Ожидалось значение типа "число"'
                     })
                     return
                 }
 
-                const currentRow = data.points.points[y] ?? { x: 0, y: 0 }
-                currentRow[x === 0 ? 'x': 'y'] = value
+                const currentRow = data.points.points[y] ?? {x: 0, y: 0}
+                currentRow[x === 0 ? 'x' : 'y'] = value
                 data.points.points[y] = currentRow
                 data.needUpdate()
             }}
         />
     </ScrollLayout>
-
-    return <VStack h='100%'>
-        <ScrollLayout flex={1}>
-            <VStack>
-                <HStack>
-                    <Layout flex={1}>X</Layout>
-                    <Layout flex={1}>Y</Layout>
-                </HStack>
-
-                {
-                    data.points.points.map((it, i) => <HStack key={it.x+'_'+it.y+'_'+i}>
-                        <Layout flex={1}>
-                            <input style={{width: "100%", height: "100%"}} type="number" defaultValue={it.x} onBlur={e => {
-                                it.x = Number(e.currentTarget.value)
-                                data.needUpdate()
-                            }} onKeyDown={e => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault()
-                                    e.currentTarget.blur()
-                                }
-                            }}/>
-                        </Layout>
-                        <Layout flex={1}>
-                            <input style={{width: "100%", height: "100%"}} type="number" defaultValue={it.y} onBlur={e => {
-                                it.y = Number(e.currentTarget.value)
-                                data.needUpdate()
-                            }} onKeyDown={e => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault()
-                                    e.currentTarget.blur()
-                                }
-                            }}/>
-                        </Layout>
-                        {/*<td>*/}
-                        {/*    <IconButton onClick={() => {*/}
-                        {/*        data.points.points.splice(*/}
-                        {/*            i, 1*/}
-                        {/*        )*/}
-
-                        {/*        data.needUpdate()*/}
-                        {/*    }} title="Удалить">*/}
-                        {/*        <DeleteIcon/>*/}
-                        {/*    </IconButton>*/}
-                        {/*</td>*/}
-                    </HStack>)
-                }
-            </VStack>
-        </ScrollLayout>
-    </VStack>
-
-    return <div>
-        <Button mode="tertiary" stretched={true} before={<IconAdd/>} onClick={() => {
-            data.points.points.push({ x: 0, y: 0 })
-            data.needUpdate()
-        }}>
-            Добавить
-        </Button>
-    </div>
 }
 
 const ChartPointsGroupEditor = (data: {
     chart: Chart,
     needUpdate: () => void
 }) => {
-   const [points, setPoints] = useState(0)
+    const dialogs = useDialogs()
+    const [points, setPoints] = useState(0)
+    const currentPoints = useMemo(() => data.chart.points[points] ?? [], [data.chart.points, points])
 
-   return <>
-       <Tabs>
-           <IconButton onClick={() => {
-               data.chart.points.push({ points: [] })
-               data.needUpdate()
-           }}><IconAdd/></IconButton>
+    return <>
+        <HStack mh={15} mt={10} gap={8}>
+            <Button
+                h={24}
+                mode={'tonal'}
+                onClick={(e) => {
+                    dialogs.showModal(
+                        (props) =>
+                            <SelectGroupModal
+                                groups={data.chart.points}
+                                updateGroups={(groups) => {
+                                    data.chart.points = groups
+                                    if(points >= data.chart.points.length) {
+                                        setPoints(data.chart.points.length - 1)
+                                    }
 
-           <IconButton onClick={() => {
-               data.chart.points.splice(points, 1)
-               data.needUpdate()
-           }}><DeleteIcon/></IconButton>
+                                    data.needUpdate()
+                                }}
+                                selectGroup={(group) => {
+                                    setPoints(group)
+                                }}
+                                {...props}
+                            />,
+                        e,
+                        {
+                            fullscreen: false,
+                            cancelable: false
+                        }
+                    )
+                }}>
+                Группа {points + 1}
+            </Button>
 
-           {
-               data.chart.points.map((it, i) =>
-                    <TabsItem
-                        key={i}
-                        selected={i===points}
-                        onClick={() => setPoints(i)}>
-                        Группа {i+1}
-                    </TabsItem>
-               )
-           }
-       </Tabs>
-       {data.chart.points.length!==0&&<PointsEditor key={points} points={data.chart.points[points]} needUpdate={data.needUpdate}/>}
-   </>
+            <ContainedIconButton
+                mode='outline'
+                layoutSize={35}
+                onClick={() => {
+                    currentPoints.points.forEach(point => {
+                        const lastX = point.x
+                        point.x = point.y
+                        point.y = lastX
+                    })
+
+                    data.needUpdate()
+                }}
+            >
+                <SwapHorizIcon/>
+            </ContainedIconButton>
+
+            <ContainedIconButton
+                mode='outline'
+                layoutSize={35}
+                onClick={() => {
+                    dialogs.showAlert({
+                        title: 'Вы уверены?',
+                        description: 'Это отчистит таблицу полностью',
+                        actions: [
+                            {
+                                title: 'Отмена',
+                                cancel: true
+                            },
+                            {
+                                title: 'Отчистить таблицу',
+                                cancel: true,
+                                onClick: () => {
+                                    currentPoints.points = []
+                                    data.needUpdate()
+                                }
+                            }
+                        ]
+                    })
+                }}
+            >
+                <MopIcon/>
+            </ContainedIconButton>
+        </HStack>
+        {<PointsEditor chart={data.chart}
+                          key={points} 
+                          points={currentPoints}
+                          needUpdate={data.needUpdate}/>}
+    </>
 }
 
 function SlideEditorInner({chart, needUpdate}: SlideEditorProps) {
@@ -166,73 +176,7 @@ function SlideEditorInner({chart, needUpdate}: SlideEditorProps) {
     useEffect(() => {
         const canvas = canvasRef.current!!
 
-        const renderedChart = new ChartJS(
-            canvas,
-            {
-                type: chart.type,
-                data: {
-                    labels: Array<number>().concat(...chart.points.map(it=> it.points.map(it => it.x)))
-                        .filter((v, i, a) => a.indexOf(v) === i)
-                        .sort((a, b) => a - b).filter((item, pos, a) => {
-                            return a.indexOf(item) === pos;
-                        }),
-
-                    datasets: chart.points.map((line, i) => ({
-                        label: undefined,
-                        borderColor: COLORS[i],
-                        backgroundColor: COLORS[i],
-                        data: line.points.map(it => ({
-                            x: it.x,
-                            y: it.y
-                        })).sort((a, b) => a.x-b.x)
-                    }))
-                },
-
-                plugins: [
-                    {
-                        id: 'backgroundColor',
-                        beforeDraw: (chart) => {
-                            const {ctx} = chart;
-                            ctx.save();
-                            ctx.globalCompositeOperation = 'destination-over';
-                            ctx.fillStyle = '#FFF';
-                            ctx.fillRect(0, 0, chart.width, chart.height);
-                            ctx.restore();
-                        }
-                    }
-                ],
-
-                options: {
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: chart.title
-                        },
-                        legend: {
-                            display: false,
-                        }
-                    },
-
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    },
-
-                    animation: false,
-                    layout: {
-                        padding: 20
-                    },
-
-                    parsing: {
-                        xAxisKey: 'x',
-                        yAxisKey: 'y',
-                        key: 'x',
-                    }
-                }
-            }
-        );
-
+        const renderedChart = buildGraphObject(canvas, chart);
         return () => {
             renderedChart.destroy()
         }
@@ -249,11 +193,15 @@ function SlideEditorInner({chart, needUpdate}: SlideEditorProps) {
                             needUpdate()
                         }}
                     />
-                    <Div style={{lineHeight: '24px', marginLeft: 15}}>
-                        <div><b>Тип: </b> {chart.type}</div>
-                        <div><b>Дата создания: </b> {new Date(chart.creationDate).toLocaleDateString()}</div>
 
-                    </Div>
+                    <VStack mh={15} mt={10}>
+                        <Body size='large'>
+                            <b>Тип: </b> {types.find(it => it.id === chart.type)?.title ?? 'unknown'}
+                        </Body>
+                        <Body size='large'>
+                            <b>Дата создания: </b> {new Date(chart.creationDate).toLocaleDateString()}
+                        </Body>
+                    </VStack>
 
                     <ChartPointsGroupEditor chart={chart} needUpdate={needUpdate}/>
                 </VStack>
@@ -279,31 +227,33 @@ function SlideEditorInner({chart, needUpdate}: SlideEditorProps) {
 }
 
 class SlideEditor extends React.Component<SlideEditorProps, {
-    error?: undefined|any
+    error?: undefined | any
 }> {
     constructor(props: SlideEditorProps) {
         super(props);
-        this.state = { error: undefined };
+        this.state = {error: undefined};
     }
 
     componentDidCatch(error: Error, info: ErrorInfo) {
-        this.setState({ ...this.state, error: info });
+        this.setState({...this.state, error: info});
     }
 
     render() {
-        if(this.state.error) {
-            return <Dialog dismiss={() => {}}>
+        if (this.state.error) {
+            return <Dialog dismiss={() => {
+            }}>
                 <Placeholder
                     emoji="🍙"
                     title={
                         <>
                             <div>Упс... Что-то пошло не так и мы не смогли отобразить данный слайд.</div>
-                            <Link onClick={() => window.open("https://yandex.ru/?q=заказать онигири")}>Не желаете онигири?</Link>
+                            <Link onClick={() => window.open("https://yandex.ru/?q=заказать онигири")}>Не желаете
+                                онигири?</Link>
                         </>
                     }
                     actions={
                         <Button onClick={() => {
-                            saveFile(this.props.charts, () => {
+                            saveAsFile(this.props.charts, () => {
                                 getCurrentWindow().close()
                             })
                         }}>Сохранить файл и выйти</Button>

@@ -55,7 +55,7 @@ export const navigate = (to: string, settings: BrowserWindowConstructorOptions &
         .substring(0, window.location.href.indexOf('#')) + "#" + to).then(it => {
         newWindow.webContents.send("data", data)
 
-        if(settings.hasOwnProperty('closeWindow')){
+        if(settings.hasOwnProperty('closeWindow') && settings.closeWindow){
             getCurrentWindow().close()
         }
     });

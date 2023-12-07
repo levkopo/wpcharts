@@ -1,4 +1,5 @@
 import React from "react";
+import {Title} from "@znui/react";
 
 export interface EditableHeaderProps extends React.ImgHTMLAttributes<HTMLElement> {
     before?: any;
@@ -25,7 +26,7 @@ export default function EditableHeader(props: EditableHeaderProps) {
         <div className={"Header-Titles"} style={{width: '100%'}}>
             <div className="Header-Title" style={{fontWeight: 500, width: '100%', height: 18}}>
                 {before&&<div className="Header-Before">{before}</div>}
-                <span contentEditable={true} suppressContentEditableWarning={true} role="textbox" onBlur={e => {
+                <Title size='large' as='span' contentEditable={true} suppressContentEditableWarning={true} role="textbox" onBlur={e => {
                     const text = e.currentTarget.innerText.length === 0 || e.currentTarget.innerText.length > 200 ?
                         "untitled": e.currentTarget.innerText
 
@@ -36,7 +37,7 @@ export default function EditableHeader(props: EditableHeaderProps) {
                         e.preventDefault()
                         e.currentTarget.blur()
                     }
-                }}>{title}</span>
+                }}>{title}</Title>
                 {indicator&&<div className="Header-Indicator">{indicator}</div>}
             </div>
             {subtitle&&<div className="Header-Subtitle">{subtitle}</div>}

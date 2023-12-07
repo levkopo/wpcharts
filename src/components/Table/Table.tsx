@@ -1,10 +1,12 @@
 import {Center, HStack, Layout, LayoutProps, ThemeTokens, VStack, znui} from "@znui/react";
-import React, {ForwardedRef, useImperativeHandle, useRef, useState} from "react";
+import React, {ForwardedRef, KeyboardEvent, useImperativeHandle, useRef, useState} from "react";
 
 export interface TableCellProps extends LayoutProps {
     value: any
     header: boolean
-    nextField?: () => void
+    x: number
+    y: number
+    moveTo?: (x: number, y: number) => void
     onChanged?: (value: string) => void
 }
 
@@ -20,12 +22,14 @@ const TableCell = React.forwardRef(
         const {
             value,
             header,
-            nextField,
+            moveTo,
+            x,
+            y,
             onChanged,
             ...rest
         } = props
 
-        const editable = !header
+        const editable = !!onChanged
 
         useImperativeHandle(ref, () => {
             return {
@@ -65,7 +69,23 @@ const TableCell = React.forwardRef(
                             if (e.key === 'Enter') {
                                 e.preventDefault()
                                 e.currentTarget.blur()
-                                setTimeout(() => nextField?.call(undefined))
+                                setTimeout(() => moveTo?.call(undefined, x, y+1))
+                            }
+
+                            if (e.code.startsWith('Arrow')) {
+                                e.preventDefault()
+                                e.currentTarget.blur()
+
+                                const arrowKey = e.code.replaceAll('Arrow', '');
+                                if(arrowKey === 'Down') {
+                                    setTimeout(() => moveTo?.call(undefined, x, y+1))
+                                }else if(arrowKey === 'Up') {
+                                    setTimeout(() => moveTo?.call(undefined, x, y-1))
+                                }else if(arrowKey === 'Left') {
+                                    setTimeout(() => moveTo?.call(undefined, x-1, y))
+                                }else if(arrowKey === 'Right') {
+                                    setTimeout(() => moveTo?.call(undefined, x+1, y))
+                                }
                             }
                         }}
                         defaultValue={value}
@@ -79,6 +99,7 @@ const TableCell = React.forwardRef(
 export interface TableProps extends LayoutProps {
     xHeaders: string[]
     table: any[][]
+    onChangedAxe: (axe: number, title: string) => void
     onChanged: (x: number, y: number, value: string) => void
 }
 
@@ -90,8 +111,18 @@ export default function Table(props: TableProps) {
         table,
         xHeaders,
         onChanged,
+        onChangedAxe,
         ...rest
     } = props
+
+    const moveTo = (x: number, y: number) => {
+        const nextRow = itemsRef.current[y]
+        if(nextRow) {
+            if(x >= 0) {
+                nextRow[x].edit()
+            }
+        }
+    }
 
     return <Layout
         as="table"
@@ -100,15 +131,24 @@ export default function Table(props: TableProps) {
         }}
         {...rest}
     >
-        <Layout>
-
-        </Layout>
         <Layout h={25} as="tr">
             {
-                xHeaders.map(it =>
+                xHeaders.map((it, index) =>
                     <TableCell
+                        ref={item => {
+                            if(item==null) return;
+                            const row = itemsRef.current[0] ?? []
+                            row[index] = item
+                            itemsRef.current[0] = row
+                        }}
+                        onChanged={(value) => {
+                            onChangedAxe(index, value)
+                        }}
                         header={true}
                         value={it}
+                        x={index}
+                        y={0}
+                        moveTo={moveTo}
                     />
                 )
             }
@@ -124,11 +164,13 @@ export default function Table(props: TableProps) {
                     {
                         rows.map((item, x) =>
                             <TableCell
+                                y={y+1}
+                                x={x}
                                 ref={item => {
                                     if(item==null) return;
-                                    const row = itemsRef.current[y] ?? []
+                                    const row = itemsRef.current[y+1] ?? []
                                     row[x] = item
-                                    itemsRef.current[y] = row
+                                    itemsRef.current[y+1] = row
                                 }}
                                 onChanged={(value) => {
                                     onChanged(x, y, value)
@@ -136,12 +178,7 @@ export default function Table(props: TableProps) {
                                 key={x}
                                 header={false}
                                 value={item}
-                                nextField={() => {
-                                    const nextRow = itemsRef.current[y+1]
-                                    if(nextRow) {
-                                        nextRow[x].edit()
-                                    }
-                                }}
+                                moveTo={moveTo}
                             />
                         )
                     }

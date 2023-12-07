@@ -12,7 +12,7 @@ import {List} from "../../components/List/List";
 import {dialog, require as remote_require} from "@electron/remote";
 
 import {ChartType} from "../../core/models/Chart";
-import React, {useState} from "react";
+import React, {useCallback, useEffect, useState} from "react";
 import ChartsData from "../../core/models/ChartsData";
 import ContextRightMenu from "../../components/ContextRightMenu/ContextRightMenu";
 import SlideEditor from "../../components/SlideEditor/SlideEditor";
@@ -31,11 +31,13 @@ import {
     VStack,
     GridLayout,
     Tappable,
-    Title
+    Title, useDialogs
 } from "@znui/react";
+import {openWPCFileInWindow, readWPCFile, selectWPCFile} from "../../file/openWPCFile";
+import {printWPCFile} from "../../file/exportWPCFile";
 
 
-const types: Array<{
+export const types: Array<{
     id: ChartType,
     title: string
 }> = [
@@ -73,7 +75,31 @@ const types: Array<{
     },
 ]
 
-export const saveFile = (presentationData: ChartsData, onSave: () => void) => {
+export const saveWPCFile = (presentationData: ChartsData, onSave: () => void) => {
+    if(!presentationData.path) {
+        saveAsFile(presentationData, onSave)
+        return
+    }
+
+    remote_require("fs").writeFile(presentationData.path,
+        pack(presentationData),
+        function (err: Error) {
+            if(err) {
+                saveAsFile(presentationData, onSave)
+                return
+            }
+
+            addToRecentFiles({
+                path: presentationData.path!!,
+                lastEdit: Date.now()
+            })
+
+            presentationData.saved = true
+            onSave()
+        });
+}
+
+export const saveAsFile = (presentationData: ChartsData, onSave: () => void) => {
     dialog.showSaveDialog({
         defaultPath:  presentationData.path || path.join(__dirname, "untitled.wpc"),
         filters: [
@@ -88,21 +114,7 @@ export const saveFile = (presentationData: ChartsData, onSave: () => void) => {
             const path = file.filePath!!
 
             presentationData.path = path.toString()
-            remote_require("fs").writeFile(path.toString(),
-                pack(presentationData),
-                function (err: Error) {
-                    if(err) {
-                        presentationData.path = undefined
-                        throw err;
-                    }
-
-                    addToRecentFiles({
-                        path: presentationData.path!!,
-                        lastEdit: Date.now()
-                    })
-
-                    onSave()
-                });
+            saveWPCFile(presentationData, onSave)
         }
     }).catch(err => {
         console.log(err)
@@ -112,22 +124,25 @@ export const saveFile = (presentationData: ChartsData, onSave: () => void) => {
 export default function ChartsWindow() {
     const [title, setTitle] = useTitle()
 
-    const [presentationData, setPresentationData] = useState(windowData as ChartsData || new ChartsData())
+    const [chartsData, setChartsData] = useState(windowData as ChartsData || new ChartsData())
     const [showSlidesList, setShowSlidesList] = useState(true)
     const [selectedChart, selectSlide] = useState<number>(0)
-    const [windowDialog, setDialog] = useState<any>()
+    const dialogs = useDialogs()
 
-    const newTitle = presentationData.path || "Новый файл"
+    const newTitle = chartsData.path || "Новый файл"
     if(newTitle!==title) {
         setTitle(newTitle)
     }
 
-    const needUpdate = () => {
-        setPresentationData(structuredClone(presentationData))
-    }
+    const needUpdate = useCallback((action: boolean = true) => {
+        setChartsData({
+            ...chartsData,
+            saved: !action
+        })
+    }, [chartsData])
 
     const createChart = (type: ChartType, title: string) => {
-        presentationData.charts.push(
+        chartsData.charts.push(
             {
                 title: title,
                 type: type,
@@ -164,86 +179,164 @@ export default function ChartsWindow() {
         needUpdate()
     }
 
+    useEffect(() => {
+        const shortcutsHandler = (e: KeyboardEvent) => {
+            if(e.ctrlKey) {
+                switch (e.key) {
+                    case 's':
+                        saveWPCFile(chartsData, () => {
+                            needUpdate(false)
+                        })
+                        return
+                }
+            }
+        }
+        
+        window.addEventListener('keyup', shortcutsHandler)
+        return () => window.removeEventListener('keyup', shortcutsHandler)
+    }, [chartsData, needUpdate])
+
     return <PosLayout
         te={<>
             <WindowHeader onClose={() => {
-                setDialog(<Dialog dismiss={() => setDialog(undefined)}>
-                    <Toolbar title="Вы несохранили документ"/>
-                    <div>
-                        Не хотите сохранить его?
-                    </div>
+                if(chartsData.saved) {
+                    navigate(HomeWindow.PAGE_NAME, {
+                        ...HomeWindow.WINDOW_SETTINGS,
+                        closeWindow: true
+                    })
 
-                    <div style={{
-                        width: "100%",
-                        marginLeft: "auto",
-                        display: "flex",
-                        gap: 15
-                    }}>
-                        <Button onClick={() => {
-                            navigate(HomeWindow.PAGE_NAME, {
-                                ...HomeWindow.WINDOW_SETTINGS,
-                                closeWindow: true
-                            })
-                        }}>Выйти</Button>
-                        <Button onClick={() => saveFile(presentationData, () => {
-                            navigate(HomeWindow.PAGE_NAME, {
-                                ...HomeWindow.WINDOW_SETTINGS,
-                                closeWindow: true
-                            })
-                        })}>Сохранить</Button>
-                        <Button onClick={() => setDialog(undefined)}>Отмена</Button>
-                    </div>
-                </Dialog>)
+                    return
+                }
+
+                dialogs.showAlert({
+                    title: "Вы не сохранили документ",
+                    description: "Не хотите сохранить его?",
+                    actions: [
+                        {
+                            title: "Выйти",
+                            onClick: () => {
+                                navigate(HomeWindow.PAGE_NAME, {
+                                    ...HomeWindow.WINDOW_SETTINGS,
+                                    closeWindow: true
+                                })
+                            }
+                        },
+                        {
+                            title: "Сохранить",
+                            onClick: () => {
+                                saveAsFile(chartsData, () => {
+                                    navigate(HomeWindow.PAGE_NAME, {
+                                        ...HomeWindow.WINDOW_SETTINGS,
+                                        closeWindow: true
+                                    })
+                                })
+                            }
+                        },
+                        {
+                            title: "Отмена",
+                            cancel: true
+                        }
+                    ]
+                })
             }}/>
-            {windowDialog}
 
             <MenuBar>
                 {
                     [
                         MenuItem({
                             title: "Файл",
-                            onClick: () => {
-                                saveFile(presentationData, () => {
-                                    needUpdate()
-                                })
-                            }
+                            children: [
+                                {
+                                    title: 'Открыть',
+                                    onClick: () => {
+                                        selectWPCFile((path) => {
+                                            dialogs.showAlert({
+                                                title: 'Открытие проекта',
+                                                description: 'Где вы желаете открыть проект?',
+                                                actions: [
+                                                    {
+                                                        title: 'В текущем окне',
+                                                        cancel: true,
+                                                        onClick: () => {
+                                                            setChartsData(readWPCFile(path))
+                                                        }
+                                                    },
+                                                    {
+                                                        title: 'В новом окне',
+                                                        cancel: true,
+                                                        onClick: () => {
+                                                            openWPCFileInWindow(path, false)
+                                                        }
+                                                    },
+                                                    {
+                                                        title: 'Отмена',
+                                                        cancel: true
+                                                    }
+                                                ]
+                                            })
+                                        })
+                                    }
+                                },
+                                {
+                                    title: 'Сохранить',
+                                    onClick: () => {
+                                        saveWPCFile(chartsData, () => {
+                                            needUpdate(false)
+                                        })
+                                    }
+                                },
+                                {
+                                    title: 'Сохранить как...',
+                                    onClick: () => {
+                                        saveAsFile(chartsData, () => {
+                                            needUpdate(false)
+                                        })
+                                    }
+                                },
+                                {
+                                    title: 'Печать',
+                                    onClick: () => {
+                                        printWPCFile(chartsData)
+                                    }
+                                },
+                                {
+                                    title: "Экспорт в PNG",
+                                    onClick: () => {
+                                        dialog.showSaveDialog({
+                                            defaultPath: path.join(__dirname, '../'+chartsData.charts[selectedChart].title+'.png'),
+                                            filters: [
+                                                {
+                                                    name: 'PNG',
+                                                    extensions: ['png']
+                                                },
+                                            ],
+                                            properties: []
+                                        }).then((file) => {
+                                            if (!file.canceled) {
+                                                const base64Data = (document.getElementById("chart") as HTMLCanvasElement)
+                                                    .toDataURL("image/png")
+                                                    .replace(/^data:image\/png;base64,/, "");
+
+                                                remote_require('fs').writeFile(
+                                                    file.filePath!!.toString(),
+                                                    base64Data,
+                                                    'base64',
+                                                    () => {}
+                                                );
+                                            }
+                                        })
+                                    }
+                                }
+                            ]
                         }),
                         MenuItem({
                             title: "Новый график",
                             children: types.map(it => ({
                                 title: it.title,
                                 onClick: () => {
-                                    createChart(it.id, 'Новый график ('+(presentationData.charts.length+1)+')')
+                                    createChart(it.id, 'Новый график ('+(chartsData.charts.length+1)+')')
                                 },
                             }))
-                        }),
-                        MenuItem({
-                            title: "Экпорт в PNG",
-                            onClick: () => {
-                                dialog.showSaveDialog({
-                                    defaultPath: path.join(__dirname, '../'+presentationData.charts[selectedChart].title+'.png'),
-                                    filters: [
-                                        {
-                                            name: 'PNG',
-                                            extensions: ['png']
-                                        },
-                                    ],
-                                    properties: []
-                                }).then((file) => {
-                                    if (!file.canceled) {
-                                        const base64Data = (document.getElementById("chart") as HTMLCanvasElement)
-                                            .toDataURL("image/png")
-                                            .replace(/^data:image\/png;base64,/, "");
-
-                                        remote_require('fs').writeFile(
-                                            file.filePath!!.toString(),
-                                            base64Data,
-                                            'base64',
-                                            () => {}
-                                        );
-                                    }
-                                })
-                            }
                         })
                     ]
                 }
@@ -270,7 +363,7 @@ export default function ChartsWindow() {
                     <ScrollLayout flex={1}>
                         <VStack>
                             {
-                                presentationData.charts.map((it, index) => {
+                                chartsData.charts.map((it, index) => {
                                     return <ContextRightMenu
                                         key={index}
                                         menu={(i) => {
@@ -279,7 +372,7 @@ export default function ChartsWindow() {
                                                     icon: <DeleteIcon/>,
                                                     title: "Удалить",
                                                     onClick: () => {
-                                                        presentationData.charts.splice(index, 1)
+                                                        chartsData.charts.splice(index, 1)
                                                         needUpdate()
                                                         i.dismiss()
                                                     }
@@ -312,7 +405,7 @@ export default function ChartsWindow() {
         }
 
         content={
-            presentationData.charts[selectedChart] === undefined ?
+            chartsData.charts[selectedChart] === undefined ?
                 <ScrollLayout>
                     <VStack gap={15} mh={15}>
                         <Headline style={{
@@ -329,7 +422,7 @@ export default function ChartsWindow() {
                                         as={Tappable}
                                         key={it.id}
                                         onClick={() => createChart(it.id,
-                                            'Новый '+it.title+' ('+(presentationData.charts.length+1)+')')
+                                            'Новый '+it.title+' ('+(chartsData.charts.length+1)+')')
                                         }
                                     >
                                         <VStack pv={10} ph={15}>
@@ -341,7 +434,7 @@ export default function ChartsWindow() {
                         </GridLayout>
                     </VStack>
                 </ScrollLayout>:
-                <SlideEditor charts={presentationData} chart={presentationData.charts[selectedChart]} needUpdate={needUpdate}/>
+                <SlideEditor charts={chartsData} chart={chartsData.charts[selectedChart]} needUpdate={needUpdate}/>
         }
 
         be={
@@ -349,7 +442,7 @@ export default function ChartsWindow() {
                 {
                     [
                         MenuItem({
-                            title: "Кол-во графиков: " + presentationData.charts.length,
+                            title: "Кол-во графиков: " + chartsData.charts.length,
                             onClick: () => setShowSlidesList(!showSlidesList)
                         })
                     ]
@@ -363,5 +456,4 @@ ChartsWindow.PAGE_NAME = "create-project";
 ChartsWindow.WINDOW_SETTINGS = {
     minWidth: 600,
     minHeight: 600,
-    closeWindow: true,
 }

@@ -23,7 +23,8 @@
     "@types/react": "^18.0.20",
     "@types/react-dom": "^18.0.6",
     "@zationdev/ui": "^0.0.17",
-    "@znui/react": "^1.1.0-dev24",
+    "@znui/icons": "^1.0.9",
+    "@znui/react": "^1.1.0",
     "babel-jest": "^27.4.2",
     "babel-loader": "^8.2.3",
     "babel-plugin-named-asset-import": "^0.3.8",
@@ -83,7 +84,7 @@
   },
   "devDependencies": {
     "electron": "22.3.23",
-    "electron-builder": "^23.6.0"
+    "electron-builder": "^24.9.1"
   },
   "scripts": {
     "start": "node scripts/start.js",
