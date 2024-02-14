@@ -84,7 +84,7 @@
   },
   "devDependencies": {
     "electron": "22.3.23",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^23.6.0"
   },
   "scripts": {
     "start": "node scripts/start.js",
@@ -97,6 +97,7 @@
   "build": {
     "appId": "ru.levkopo.wpcharts",
     "copyright": "Copyright © 2022 Lev Koporushkin",
+    "icon": "./build/icon.png",
     "files": [
       "build/**/*",
       "node_modules/**/*"
@@ -114,8 +115,7 @@
       "category": "Network"
     },
     "win": {
-      "target": "nsis",
-      "icon": "./build/icon.png"
+      "target": "nsis"
     },
     "nsis": {
       "perMachine": true

@@ -30,7 +30,7 @@ const createWindow = () => {
     console.log(startUrl);
     mainWindow.loadURL(startUrl+"#startup").then(() => {
         mainWindow.webContents.send("data",
-            fs.lstatSync(filePath).isFile() ? filePath:
+            fs.lstatSync(filePath).isFile() && filePath.endsWith('.wpc') ? filePath:
                 undefined
         )
     });

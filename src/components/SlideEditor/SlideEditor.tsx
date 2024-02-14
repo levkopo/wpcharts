@@ -192,6 +192,8 @@ function SlideEditorInner({chart, needUpdate}: SlideEditorProps) {
             <ResizableLayout width={400} maxWidth="500px" minWidth="300px">
                 <VStack height='100%'>
                     <EditableHeader
+                        mh={15}
+                        mt={10}
                         title={chart.title}
                         onChangeText={text => {
                             chart.title = text

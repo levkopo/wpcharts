@@ -1,7 +1,7 @@
 import React from "react";
-import {Title} from "@znui/react";
+import {Layout, LayoutProps, Title} from "@znui/react";
 
-export interface EditableHeaderProps extends React.ImgHTMLAttributes<HTMLElement> {
+export interface EditableHeaderProps extends LayoutProps {
     before?: any;
     title?: any;
     subtitle?: any;
@@ -22,27 +22,18 @@ export default function EditableHeader(props: EditableHeaderProps) {
         ...otherParams
     } = props
 
-    return <div {...otherParams} className={"Header"}>
-        <div className={"Header-Titles"} style={{width: '100%'}}>
-            <div className="Header-Title" style={{fontWeight: 500, width: '100%', height: 18}}>
-                {before&&<div className="Header-Before">{before}</div>}
-                <Title cursor='text' size='large' as='span' contentEditable={true} suppressContentEditableWarning={true} role="textbox" onBlur={e => {
-                    const text = e.currentTarget.innerText.length === 0 || e.currentTarget.innerText.length > 200 ?
-                        "untitled": e.currentTarget.innerText
+    return <Layout {...otherParams}>
+        <Title cursor='text' size='large' as='span' contentEditable={true} suppressContentEditableWarning={true} role="textbox" onBlur={e => {
+            const text = e.currentTarget.innerText.length === 0 || e.currentTarget.innerText.length > 200 ?
+                "untitled": e.currentTarget.innerText
 
-                    e.currentTarget.innerText = text
-                    onChangeText(text)
-                }} onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault()
-                        e.currentTarget.blur()
-                    }
-                }}>{title}</Title>
-                {indicator&&<div className="Header-Indicator">{indicator}</div>}
-            </div>
-            {subtitle&&<div className="Header-Subtitle">{subtitle}</div>}
-        </div>
-
-        {aside&&<div className="Header-Aside">{aside}</div>}
-    </div>
+            e.currentTarget.innerText = text
+            onChangeText(text)
+        }} onKeyDown={e => {
+            if (e.key === 'Enter') {
+                e.preventDefault()
+                e.currentTarget.blur()
+            }
+        }}>{title}</Title>
+    </Layout>
 }
